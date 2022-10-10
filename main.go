@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -34,9 +35,10 @@ var (
 	metricsPath string
 	// metricsCert string
 	// metricsPriv string
-	debugFlag bool
-	ips       []string
-	Version   string = "snapshot"
+	debugFlag   bool
+	systemdFlag bool
+	ips         []string
+	Version     string = "snapshot"
 )
 
 func addString(item string, items []string) (newItems []string) {
@@ -56,14 +58,15 @@ func addString(item string, items []string) (newItems []string) {
 
 func main() {
 
-	flag.StringVar(&domain, "domain", "", "domain to query to")
-	flag.StringVar(&resource, "resource", "", "resource(s) to query to, separated by commas")
-	flag.IntVar(&every, "every", 10, "number of seconds to wait between requests")
+	flag.StringVar(&domain, "domain", "", "Domain to query to")
+	flag.StringVar(&resource, "resource", "", "Resource(s) to query to, separated by commas")
+	flag.IntVar(&every, "every", 10, "Seconds to wait between requests")
 	flag.StringVar(&metricsIP, "ipport", "0.0.0.0:9000", "IP and Port for the metrics exporter")
-	flag.StringVar(&metricsPath, "path", "/metrics", "path under metrics are exposed")
+	flag.StringVar(&metricsPath, "path", "/metrics", "Path under metrics are exposed")
 	// flag.StringVar(&metricsCert, "metrics.cert", "", "certificate used to expose metrics")
 	// flag.StringVar(&metricsPriv, "metrics.priv", "", "private key used to expose metrics")
-	flag.BoolVar(&debugFlag, "debug", false, "see that the service is doing")
+	flag.BoolVar(&debugFlag, "debug", false, "Debug service activity")
+	flag.BoolVar(&systemdFlag, "systemd", false, "Notify systemd of service health on intervals")
 
 	flag.Parse()
 
@@ -82,12 +85,12 @@ func main() {
 	// show nice web page if called without metricsPath
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
-					<head><title>CDN check Exporter</title></head>
-					<body>
-					<h1>CDN check Exporter</h1>
-					<p><a href='` + metricsPath + `'>Metrics</a></p>
-					</body>
-					</html>`))
+			<head><title>CDN check Exporter</title></head>
+			<body>
+			<h1>CDN check Exporter</h1>
+			<p><a href='` + metricsPath + `'>Metrics</a></p>
+			</body>
+			</html>`))
 	})
 
 	// Start the http server in background, but catch error
@@ -97,16 +100,20 @@ func main() {
 		os.Exit(2)
 	}()
 
-	// wait for initialization of http server before looping so the systemd alive check doesn't fail
-	time.Sleep(time.Second * 3)
+	if systemdFlag {
+		// wait for initialization of http server before looping so the systemd alive check doesn't fail
+		time.Sleep(time.Second * 3)
 
-	// notify systemd that we're ready
-	daemon.SdNotify(false, daemon.SdNotifyReady)
+		// notify systemd that we're ready
+		daemon.SdNotify(false, daemon.SdNotifyReady)
+	}
 
 	for {
 		work(domain, resources)
 
-		systemAlive(metricsIP, metricsPath)
+		if systemdFlag {
+			systemAlive(metricsIP, metricsPath)
+		}
 
 		time.Sleep(time.Duration(int64(every)) * time.Second)
 	}
@@ -117,7 +124,7 @@ func work(domain string, resources []string) {
 
 	requests, err := net.LookupIP(domain)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
+		printLog(fmt.Sprintf("Could not get IPs: %v\n", err))
 		os.Exit(1)
 	}
 	for _, ip := range requests {
@@ -132,6 +139,11 @@ func work(domain string, resources []string) {
 
 			client := &http.Client{
 				Timeout: 5 * time.Second,
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				},
 			}
 
 			req, _ := http.NewRequest("GET", fmt.Sprintf("http://%s%s", ip, resource), nil)
@@ -150,18 +162,17 @@ func work(domain string, resources []string) {
 			if err != nil {
 				printLog(ip, err)
 				setPrometheusMetric("request_success", 0, labelKeys, labelValues, "request was success")
-
 			} else {
 				printLog(ip, res.StatusCode)
 				body, _ := io.ReadAll(res.Body)
 				printLog(ip, string(body))
 				res.Body.Close()
 
-				setPrometheusMetric("request_success", 1, labelKeys, labelValues, "request was success")
-				setPrometheusMetric("request", res.StatusCode, labelKeys, labelValues, "request error code")
-				setPrometheusMetric("request_time", int(time.Since(start).Milliseconds()), labelKeys, labelValues, "request time in ms")
-				setPrometheusMetric("request_bytes", len(body), labelKeys, labelValues, "request length")
-				setPrometheusMetric("request_last_update", int(time.Now().Unix()), labelKeys, labelValues, "request last update for this IP")
+				setPrometheusMetric("request_success", 1, labelKeys, labelValues, "request was success (bool)")
+				setPrometheusMetric("request", res.StatusCode, labelKeys, labelValues, "request error code (int)")
+				setPrometheusMetric("request_time", int(time.Since(start).Milliseconds()), labelKeys, labelValues, "request time (ms)")
+				setPrometheusMetric("request_bytes", len(body), labelKeys, labelValues, "request length (bytes)")
+				setPrometheusMetric("request_last_update", int(time.Now().Unix()), labelKeys, labelValues, "request last update for this IP (epoch)")
 			}
 
 		}
