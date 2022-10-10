@@ -36,6 +36,7 @@ var (
 	// metricsPriv string
 	debugFlag bool
 	ips       []string
+	Version   string = "snapshot"
 )
 
 func addString(item string, items []string) (newItems []string) {

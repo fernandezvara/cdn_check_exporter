@@ -32,6 +32,7 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
+      - -X github.com/fernandezvara/cdn_check_exporter/main.Version={{.Version}}
 
 archives:
   - replacements:
