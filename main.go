@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -151,7 +151,7 @@ func work(domain string, resources []string) {
 
 			} else {
 				printLog(ip, res.StatusCode)
-				body, _ := ioutil.ReadAll(res.Body)
+				body, _ := io.ReadAll(res.Body)
 				printLog(ip, string(body))
 				res.Body.Close()
 
@@ -197,7 +197,7 @@ func systemAlive(listenAddress, metricsPath string) {
 	}
 
 	// Read all away to free memory
-	_, _ = ioutil.ReadAll(res.Body)
+	_, _ = io.ReadAll(res.Body)
 	defer res.Body.Close()
 
 }
