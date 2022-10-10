@@ -138,23 +138,24 @@ func work(domain string, resources []string) {
 			var start time.Time = time.Now()
 
 			res, err := client.Do(req)
+
+			labelKeys := []string{"ip", "resource"}
+
+			var labelValues []string
+			labelValues = append(labelValues, string(ip))
+			labelValues = append(labelValues, resource)
+
 			if err != nil {
-				fmt.Println(ip, err)
+				printLog(ip, err)
+				setPrometheusMetric("request_success", 0, labelKeys, labelValues, "request was success")
+
 			} else {
 				printLog(ip, res.StatusCode)
 				body, _ := ioutil.ReadAll(res.Body)
 				printLog(ip, string(body))
 				res.Body.Close()
 
-				labelKeys := []string{"ip", "resource"} //, "elapsed", "bytes", "last"}
-
-				var labelValues []string
-				labelValues = append(labelValues, string(ip))
-				labelValues = append(labelValues, resource)
-				// labelValues = append(labelValues, fmt.Sprintf("%d", time.Since(start).Milliseconds()))
-				// labelValues = append(labelValues, fmt.Sprintf("%d", len(body)))
-				// labelValues = append(labelValues, fmt.Sprintf("%d", time.Now().Unix()))
-
+				setPrometheusMetric("request_success", 1, labelKeys, labelValues, "request was success")
 				setPrometheusMetric("request", res.StatusCode, labelKeys, labelValues, "request error code")
 				setPrometheusMetric("request_time", int(time.Since(start).Milliseconds()), labelKeys, labelValues, "request time in ms")
 				setPrometheusMetric("request_bytes", len(body), labelKeys, labelValues, "request length")
