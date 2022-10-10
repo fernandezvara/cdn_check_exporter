@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/prometheus/client_golang v1.13.0
+	github.com/namsral/flag v1.7.4-pre
 )
 
 require (

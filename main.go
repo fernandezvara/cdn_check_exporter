@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/daemon"
+	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -71,6 +71,7 @@ func main() {
 
 	if len(domain) == 0 || len(resources) == 0 {
 		fmt.Println("Missing required values of domain and/or resources")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
