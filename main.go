@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -99,10 +100,10 @@ func main() {
 		os.Exit(2)
 	}()
 
-	// wait for initialization of http server before looping so the systemd alive check doesn't fail
-	time.Sleep(time.Second * 3)
-
 	if systemdFlag {
+		// wait for initialization of http server before looping so the systemd alive check doesn't fail
+		time.Sleep(time.Second * 3)
+
 		// notify systemd that we're ready
 		daemon.SdNotify(false, daemon.SdNotifyReady)
 	}
@@ -123,7 +124,7 @@ func work(domain string, resources []string) {
 
 	requests, err := net.LookupIP(domain)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
+		printLog(fmt.Sprintf("Could not get IPs: %v\n", err))
 		os.Exit(1)
 	}
 	for _, ip := range requests {
@@ -138,6 +139,11 @@ func work(domain string, resources []string) {
 
 			client := &http.Client{
 				Timeout: 5 * time.Second,
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				},
 			}
 
 			req, _ := http.NewRequest("GET", fmt.Sprintf("http://%s%s", ip, resource), nil)
