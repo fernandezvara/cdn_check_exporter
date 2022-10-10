@@ -55,7 +55,7 @@ dockers:
       - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-amd64
     dockerfile: Dockerfile
     goarch: amd64
-    use_buildx: true
+    use: buildx
     build_flag_templates:
       - --label=org.opencontainers.image.created={{.Date}}
       - --label=org.opencontainers.image.name={{.ProjectName}}
@@ -70,7 +70,7 @@ dockers:
       - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-arm64
     dockerfile: Dockerfile
     goarch: arm64
-    use_buildx: true
+    use: buildx
     build_flag_templates:
       - --label=org.opencontainers.image.created={{.Date}}
       - --label=org.opencontainers.image.name={{.ProjectName}}
