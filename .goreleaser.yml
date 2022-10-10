@@ -1,0 +1,111 @@
+project_name: cdn_check_exporter
+
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+      - freebsd
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 6
+      - 7
+    binary: cdn_check_exporter
+    ignore:
+      - goos: freebsd
+        goarch: arm64
+      - goos: windows
+        goarch: arm64
+      - goos: freebsd
+        goarch: arm
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+dockers:
+  - image_templates:
+      - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-amd64
+    dockerfile: Dockerfile
+    goarch: amd64
+    use_buildx: true
+    build_flag_templates:
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.name={{.ProjectName}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.source={{.GitURL}}
+      - --label=org.opencontainers.image.licenses=MIT
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --platform=linux/amd64
+      - --build-arg=ARCH=amd64
+  - image_templates:
+      - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-arm64
+    dockerfile: Dockerfile
+    goarch: arm64
+    use_buildx: true
+    build_flag_templates:
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.name={{.ProjectName}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.source={{.GitURL}}
+      - --label=org.opencontainers.image.licenses=MIT
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --platform=linux/arm64
+      - --build-arg=ARCH=arm64
+
+docker_manifests:
+  - name_template: ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}
+    image_templates:
+      - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-amd64
+      - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-arm64
+  - name_template: ghcr.io/fernandezvara/cdn_check_exporter:latest
+    image_templates:
+      - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-amd64
+      - ghcr.io/fernandezvara/cdn_check_exporter:{{ .Tag }}-arm64
+
+release:
+  github:
+    owner: fernandezvara
+    name: cdn_check_exporter
+  draft: false
+  name_template: "{{.ProjectName}}-v{{.Version}}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs"
+      - "^test"
+      - "^ci"
+      - Merge pull request
+      - Merge branch
+      - go mod tidy
