@@ -28,4 +28,3 @@ ENV PS1 "$(whoami):$(pwd)> "
 EXPOSE 9000
 
 ENTRYPOINT ["/usr/local/bin/cdn_check_exporter"]
-CMD [ "-h" ]
